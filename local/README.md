@@ -20,6 +20,18 @@ A configuração suportada pelo produto está documentada em:
 
 Use `~/.deepagents/config.toml` com `[models.providers.openai.http]` em vez de depender só destes scripts, quando possível.
 
+## Windows: `deepagents` no PATH
+
+Se `deepagents` falhar com `ModuleNotFoundError: No module named 'deepagents_cli'`, o `Scripts\deepagents.exe` existe mas o pacote não está instalado nesse Python. Instale o CLI a partir deste clone (usa o código local em desenvolvimento):
+
+```powershell
+py -3.14 -m pip install -e C:\Repos\deepagents\libs\cli
+```
+
+(Substitua `3.14` pela versão que corresponde ao `deepagents.exe` que está no PATH.)
+
+Se a política de aplicações bloquear o arranque do executável empacotado, use `py -3.14 -m deepagents_cli` em alternativa.
+
 ## Caminhos
 
 Os scripts assumem a **raiz do repositório** um nível acima desta pasta (`local/..`) para encontrar `.env`, salvo indicação em contrário no próprio ficheiro.
