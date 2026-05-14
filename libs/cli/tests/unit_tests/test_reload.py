@@ -339,6 +339,33 @@ class TestReloadFromEnvironment:
         assert os.environ.get("TEST_GLOBAL_ONLY") == "global-value"
         monkeypatch.delenv("TEST_GLOBAL_ONLY", raising=False)
 
+    def test_start_path_none_finds_dotenv_in_parent_dir(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """When start_path is None, walk from cwd upward to find `.env`."""
+        from deepagents_cli.config import _load_dotenv
+
+        monkeypatch.setattr(
+            "deepagents_cli.config._GLOBAL_DOTENV_PATH",
+            tmp_path / "nonexistent" / ".env",
+        )
+        root = tmp_path / "repo"
+        sub = root / "libs" / "cli"
+        sub.mkdir(parents=True)
+        (root / ".env").write_text("OLLAMA_SUBWALK_KEY=from-parent\n")
+
+        monkeypatch.chdir(sub)
+        monkeypatch.setattr(
+            "dotenv.load_dotenv",
+            _real_load_dotenv,
+        )
+        monkeypatch.delenv("OLLAMA_SUBWALK_KEY", raising=False)
+
+        _load_dotenv(start_path=None)
+
+        assert os.environ.get("OLLAMA_SUBWALK_KEY") == "from-parent"
+        monkeypatch.delenv("OLLAMA_SUBWALK_KEY", raising=False)
+
     def test_global_load_dotenv_raises_oserror(
         self,
         monkeypatch: pytest.MonkeyPatch,

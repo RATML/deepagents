@@ -116,7 +116,17 @@ def _load_dotenv(*, start_path: Path | None = None) -> bool:
     dotenv_path: Path | str | None = None
     try:
         if start_path is None:
-            loaded = dotenv.load_dotenv(override=False) or loaded
+            # Walk upward from cwd so a monorepo `.env` at the repo root is
+            # found when the CLI is launched from a subdirectory (e.g.
+            # `libs/cli`), matching the behavior when `start_path` is explicit.
+            dotenv_path = _find_dotenv_from_start_path(Path.cwd())
+            if dotenv_path is not None:
+                loaded = (
+                    dotenv.load_dotenv(dotenv_path=dotenv_path, override=False)
+                    or loaded
+                )
+            else:
+                loaded = dotenv.load_dotenv(override=False) or loaded
         else:
             dotenv_path = _find_dotenv_from_start_path(start_path)
             if dotenv_path is not None:
