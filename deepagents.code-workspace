@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"name": "deepagents",
+			"path": "."
+		}
+	],
+	"settings": {
+		"jupyter.askForKernelRestart": false
+	}
+}
