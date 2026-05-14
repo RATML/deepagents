@@ -1,0 +1,14 @@
+# Ignore todos os certificados reais
+*.crt
+*.pem
+*.cer
+*.key
+
+# Exceto os exemplos
+!*.example
+!corporate-ca.crt.example
+
+# Ignore backups
+*.bak
+*.backup
+*.old

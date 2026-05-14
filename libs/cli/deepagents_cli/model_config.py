@@ -433,6 +433,14 @@ class ProviderConfig(TypedDict, total=False):
     individual values for that model only; the merge is shallow.
     """
 
+    http: dict[str, Any]
+    """HTTP client options forwarded to provider SDK clients.
+
+    Supports opt-in transport settings such as `verify_ssl`, `ca_bundle`,
+    `timeout`, and `trust_env`. The CLI leaves transport behavior unchanged
+    unless this table is configured.
+    """
+
 
 DEFAULT_CONFIG_DIR = Path.home() / ".deepagents"
 """Directory for user-level Deep Agents configuration (`~/.deepagents`)."""
@@ -1903,6 +1911,19 @@ class ModelConfig:
         """
         provider = self.providers.get(provider_name)
         return provider.get("api_key_env") if provider else None
+
+    def get_http_options(self, provider_name: str) -> dict[str, Any]:
+        """Get HTTP client options for a provider.
+
+        Args:
+            provider_name: The provider to get HTTP options for.
+
+        Returns:
+            Configured HTTP options, or an empty dict if none are configured.
+        """
+        provider = self.providers.get(provider_name)
+        options = provider.get("http") if provider else None
+        return dict(options) if isinstance(options, dict) else {}
 
     def get_class_path(self, provider_name: str) -> str | None:
         """Get the custom class path for a provider.

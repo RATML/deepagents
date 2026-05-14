@@ -1940,6 +1940,62 @@ def _ensure_cli_openrouter_profile_registered() -> None:
     _cli_openrouter_profile_registered = True
 
 
+def _http_client_kwargs_from_options(options: dict[str, Any]) -> dict[str, Any]:
+    """Build kwargs for provider HTTP clients from config options.
+
+    Args:
+        options: Provider `[http]` config table.
+
+    Returns:
+        Keyword arguments accepted by `httpx.Client` and `httpx.AsyncClient`.
+    """
+    kwargs: dict[str, Any] = {}
+
+    if options.get("verify_ssl") is False:
+        kwargs["verify"] = False
+    elif ca_bundle := options.get("ca_bundle"):
+        kwargs["verify"] = ca_bundle
+
+    if timeout := options.get("timeout"):
+        kwargs["timeout"] = timeout
+    if "trust_env" in options:
+        kwargs["trust_env"] = bool(options["trust_env"])
+
+    return kwargs
+
+
+def _apply_provider_http_options(provider: str, result: dict[str, Any]) -> None:
+    """Attach custom HTTP clients for providers that support them.
+
+    Args:
+        provider: Provider name.
+        result: Provider kwargs being assembled for `init_chat_model`.
+    """
+    if provider != "openai":
+        return
+
+    from deepagents_cli.model_config import ModelConfig
+
+    options = ModelConfig.load().get_http_options(provider)
+    if not options:
+        return
+
+    client_kwargs = _http_client_kwargs_from_options(options)
+    if not client_kwargs:
+        return
+
+    import httpx
+
+    if client_kwargs.get("verify") is False:
+        logger.warning(
+            "SSL verification is disabled for provider '%s' via config.toml.",
+            provider,
+        )
+
+    result["http_client"] = httpx.Client(**client_kwargs)
+    result["http_async_client"] = httpx.AsyncClient(**client_kwargs)
+
+
 def _get_provider_kwargs(
     provider: str, *, model_name: str | None = None
 ) -> dict[str, Any]:
@@ -1984,6 +2040,8 @@ def _get_provider_kwargs(
         api_key = resolve_env_var(api_key_env)
         if api_key:
             result["api_key"] = api_key
+
+    _apply_provider_http_options(provider, result)
 
     # `langchain-ollama` has no `api_key` kwarg; hosted Ollama (Cloud or
     # gateway) needs the bearer token threaded through `client_kwargs.headers`.

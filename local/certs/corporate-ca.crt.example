@@ -1,0 +1,12 @@
+-----BEGIN CERTIFICATE-----
+PLACE YOUR CORPORATE CA CERTIFICATE HERE
+This is an example file. Replace with your actual corporate CA certificate.
+
+To obtain your certificate:
+1. Contact your IT department
+2. Export from Windows Certificate Manager (certmgr.msc)
+3. Look for "Trusted Root Certification Authorities"
+4. Export as Base-64 encoded X.509 (.CER)
+
+Save the actual certificate as: corporate-ca.crt
+-----END CERTIFICATE-----

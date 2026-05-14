@@ -919,6 +919,48 @@ models = ["llama3"]
         assert config.get_base_url("local") == "http://localhost:11434/v1"
 
 
+class TestModelConfigGetHttpOptions:
+    """Tests for ModelConfig.get_http_options() method."""
+
+    def test_returns_empty_options_for_unknown_provider(self) -> None:
+        """Returns empty options for unknown provider."""
+        config = ModelConfig()
+        assert config.get_http_options("unknown") == {}
+
+    def test_returns_empty_options_when_not_configured(self, tmp_path: Path) -> None:
+        """Returns empty options when provider has no http table."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("""
+[models.providers.openai]
+models = ["gpt-4o"]
+""")
+        config = ModelConfig.load(config_path)
+
+        assert config.get_http_options("openai") == {}
+
+    def test_returns_configured_http_options(self, tmp_path: Path) -> None:
+        """Returns configured provider HTTP options."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("""
+[models.providers.openai]
+models = ["gpt-4o"]
+
+[models.providers.openai.http]
+verify_ssl = false
+ca_bundle = "C:/certs/corporate-ca.crt"
+timeout = 30
+trust_env = false
+""")
+        config = ModelConfig.load(config_path)
+
+        assert config.get_http_options("openai") == {
+            "verify_ssl": False,
+            "ca_bundle": "C:/certs/corporate-ca.crt",
+            "timeout": 30,
+            "trust_env": False,
+        }
+
+
 class TestModelConfigGetApiKeyEnv:
     """Tests for ModelConfig.get_api_key_env() method."""
 
@@ -938,6 +980,77 @@ api_key_env = "ANTHROPIC_API_KEY"
         config = ModelConfig.load(config_path)
 
         assert config.get_api_key_env("anthropic") == "ANTHROPIC_API_KEY"
+
+
+class TestProviderHttpKwargs:
+    """Tests for provider HTTP client kwargs."""
+
+    def test_provider_kwargs_omits_http_clients_without_http_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Default provider kwargs do not include custom HTTP clients."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("""
+[models.providers.openai]
+models = ["gpt-4o"]
+api_key_env = "OPENAI_API_KEY"
+base_url = "https://api.openai.com/v1"
+""")
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+        monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", config_path)
+
+        from deepagents_cli.config import _get_provider_kwargs
+
+        kwargs = _get_provider_kwargs("openai", model_name="gpt-4o")
+
+        assert "http_client" not in kwargs
+        assert "http_async_client" not in kwargs
+
+    def test_provider_kwargs_adds_http_clients_when_ssl_disabled(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Provider kwargs include OpenAI HTTP clients when SSL is disabled."""
+        class FakeClient:
+            def __init__(self, **kwargs: Any) -> None:
+                self.kwargs = kwargs
+
+        class FakeAsyncClient:
+            def __init__(self, **kwargs: Any) -> None:
+                self.kwargs = kwargs
+
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("""
+[models.providers.openai]
+models = ["minimax-m2.7:cloud"]
+api_key_env = "OLLAMA_API_KEY"
+base_url = "https://ollama.com/v1"
+
+[models.providers.openai.http]
+verify_ssl = false
+timeout = 30
+trust_env = false
+""")
+        monkeypatch.setenv("OLLAMA_API_KEY", "test-key")
+        monkeypatch.setattr(model_config, "DEFAULT_CONFIG_PATH", config_path)
+        monkeypatch.setattr("httpx.Client", FakeClient)
+        monkeypatch.setattr("httpx.AsyncClient", FakeAsyncClient)
+
+        from deepagents_cli.config import _get_provider_kwargs
+
+        kwargs = _get_provider_kwargs("openai", model_name="minimax-m2.7:cloud")
+
+        assert kwargs["base_url"] == "https://ollama.com/v1"
+        assert kwargs["api_key"] == "test-key"
+        assert kwargs["http_client"].kwargs == {
+            "verify": False,
+            "timeout": 30,
+            "trust_env": False,
+        }
+        assert kwargs["http_async_client"].kwargs == {
+            "verify": False,
+            "timeout": 30,
+            "trust_env": False,
+        }
 
 
 class TestSaveDefaultModel:

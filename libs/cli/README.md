@@ -52,6 +52,7 @@ The fastest way to start using Deep Agents. `deepagents-cli` is a pre-built codi
 ## 📖 Resources
 
 - **[CLI Documentation](https://docs.langchain.com/oss/python/deepagents/cli/overview)**
+- **[Provider HTTP/TLS (`config.toml`)](docs/provider-http-tls.md)** — optional `httpx` settings for OpenAI-compatible endpoints (corporate TLS / custom CA)
 - **[Changelog](https://github.com/langchain-ai/deepagents/blob/main/libs/cli/CHANGELOG.md)**
 - **[Source code](https://github.com/langchain-ai/deepagents/tree/main/libs/cli)**
 - **[Deep Agents SDK](https://github.com/langchain-ai/deepagents)** — underlying agent harness
