@@ -412,16 +412,23 @@ def to_posix_path(path: str) -> str:
     return path.replace("\\", "/")
 
 
-def validate_path(path: str, *, allowed_prefixes: Sequence[str] | None = None) -> str:
+def validate_path(
+    path: str,
+    *,
+    allowed_prefixes: Sequence[str] | None = None,
+    physical_root: str | Path | None = None,
+) -> str:
     r"""Validate and normalize file path for security.
 
     Ensures paths are safe to use by preventing directory traversal attacks
     and enforcing consistent formatting. All paths are normalized to use
     forward slashes and start with a leading slash.
 
-    This function is designed for virtual filesystem paths and rejects
-    Windows absolute paths (e.g., `C:/...`, `F:/...`) to maintain consistency
-    and prevent path format ambiguity.
+    Windows-style absolute paths (`C:/...`) are rejected by default so agents
+    use a single virtual path convention. When `physical_root` is provided
+    (typically the local `FilesystemBackend` project root), a native Windows
+    path that resolves *under* that root is coerced to the equivalent virtual
+    path (e.g. `C:\\proj\\README.md` with root `C:\\proj` -> `/README.md`).
 
     Args:
         path: The path to validate and normalize.
@@ -429,14 +436,17 @@ def validate_path(path: str, *, allowed_prefixes: Sequence[str] | None = None) -
 
             If provided, the normalized path must start with one of
             these prefixes.
+        physical_root: Optional workspace directory on disk. When set, Windows
+            drive-letter paths that resolve under this directory are converted
+            to virtual paths before validation.
 
     Returns:
         Normalized canonical path starting with `/` and using forward slashes.
 
     Raises:
         ValueError: If path contains traversal sequences (`..` or `~`), is a
-            Windows absolute path (e.g., `C:/...`), or does not start with an
-            allowed prefix when `allowed_prefixes` is specified.
+            Windows absolute path (e.g., `C:/...`) without a coercible root, or
+            does not start with an allowed prefix when `allowed_prefixes` is specified.
 
     Example:
         ```python
@@ -450,13 +460,36 @@ def validate_path(path: str, *, allowed_prefixes: Sequence[str] | None = None) -
     """
     # Check for traversal as a path component (not substring) to avoid
     # false-positive rejection of legitimate filenames like "foo..bar.txt"
-    parts = PurePosixPath(to_posix_path(path)).parts
+    posix_input = to_posix_path(path)
+    parts = PurePosixPath(posix_input).parts
     if ".." in parts or path.startswith("~"):
         msg = f"Path traversal not allowed: {path}"
         raise ValueError(msg)
 
-    # Reject Windows absolute paths (e.g., C:\..., D:/...)
-    if re.match(r"^[a-zA-Z]:", path):
+    # Coerce native Windows absolute paths under `physical_root` to virtual paths.
+    if physical_root is not None and re.match(r"^[a-zA-Z]:", posix_input):
+        try:
+            abs_p = Path(path).expanduser().resolve()
+            root_p = Path(physical_root).resolve()
+            rel = abs_p.relative_to(root_p)
+        except ValueError as exc:
+            msg = (
+                f"Path is outside the workspace root ({root_p}): {path}. "
+                "Use a virtual path starting with / (paths are relative to the project root)."
+            )
+            raise ValueError(msg) from exc
+        except OSError as exc:
+            msg = f"Could not resolve path {path!r}: {exc}"
+            raise ValueError(msg) from exc
+        path = "/" + rel.as_posix()
+        posix_input = to_posix_path(path)
+        parts = PurePosixPath(posix_input).parts
+        if ".." in parts:
+            msg = f"Path traversal not allowed: {path}"
+            raise ValueError(msg)
+
+    # Reject Windows absolute paths (e.g., C:\..., D:/...) when not coerced above
+    if re.match(r"^[a-zA-Z]:", posix_input):
         msg = f"Windows absolute paths are not supported: {path}. Please use virtual paths starting with / (e.g., /workspace/file.txt)"
         raise ValueError(msg)
 

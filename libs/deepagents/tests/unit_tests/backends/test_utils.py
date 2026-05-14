@@ -1,5 +1,6 @@
 """Tests for backends/utils.py utility functions."""
 
+import sys
 from typing import Any
 
 import pytest
@@ -81,6 +82,43 @@ class TestValidatePath:
         """Test that dangerous paths are rejected."""
         with pytest.raises(ValueError, match=error_match):
             validate_path(invalid_path)
+
+    @pytest.mark.skipif(
+        sys.platform != "win32",
+        reason="Coercion applies to Windows drive-letter absolute paths.",
+    )
+    def test_physical_root_coerces_windows_path(self, tmp_path: Path) -> None:
+        """Native paths under `physical_root` map to virtual `/...` paths."""
+        root = tmp_path / "proj"
+        root.mkdir()
+        readme = root / "README.md"
+        readme.write_text("hello", encoding="utf-8")
+        native = str(readme.resolve())
+        assert validate_path(native, physical_root=str(root.resolve())) == "/README.md"
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows drive-letter paths only.")
+    def test_physical_root_coerces_nested_file(self, tmp_path: Path) -> None:
+        root = tmp_path / "proj"
+        inner = root / "src"
+        inner.mkdir(parents=True)
+        py_file = inner / "mod.py"
+        py_file.write_text("x", encoding="utf-8")
+        assert validate_path(str(py_file.resolve()), physical_root=str(root.resolve())) == "/src/mod.py"
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows drive-letter paths only.")
+    def test_physical_root_rejects_outside_root(self, tmp_path: Path) -> None:
+        inner = tmp_path / "proj"
+        inner.mkdir()
+        other = tmp_path / "other"
+        other.mkdir()
+        outsider = other / "secret.txt"
+        outsider.write_text("z", encoding="utf-8")
+        with pytest.raises(ValueError, match="outside the workspace root"):
+            validate_path(str(outsider.resolve()), physical_root=str(inner.resolve()))
+
+    def test_physical_root_ignored_for_virtual_paths(self, tmp_path: Path) -> None:
+        """POSIX virtual paths are unchanged when `physical_root` is set."""
+        assert validate_path("/docs/readme.md", physical_root=str(tmp_path)) == "/docs/readme.md"
 
     def test_allowed_prefixes_enforced(self) -> None:
         """Test allowed_prefixes parameter."""
