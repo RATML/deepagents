@@ -15,7 +15,12 @@ import textwrap
 
 import pytest
 
-from deepagents_code.main import _HELP_SPECS, _show_bare_command_group_help, parse_args
+from deepagents_code.main import (
+    _BARE_ACTION_GROUPS,
+    _HELP_SPECS,
+    _show_bare_command_group_help,
+    parse_args,
+)
 
 # Module *prefixes* that must not appear in `sys.modules` after a help-only
 # invocation. Using prefixes (rather than an explicit allowlist) catches
@@ -41,29 +46,46 @@ def _run_cli_main(argv: list[str]) -> subprocess.CompletedProcess[str]:
     code = """
         import json
         import sys
+        from contextlib import nullcontext
         from unittest.mock import patch
 
         from deepagents_code.main import cli_main
 
         argv = ["deepagents", *json.loads(sys.argv[1])]
-        with (
-            patch.object(sys, "argv", argv),
-            patch("deepagents_code.main.check_cli_dependencies"),
-        ):
-            cli_main()
-
-        prefixes = tuple(json.loads(sys.argv[2]))
-        loaded = sorted(
-            name for name in sys.modules if name.startswith(prefixes)
+        # An intentional monorepo SDK pin skew can make `doctor` exit unhealthy;
+        # omit that environment-specific check while testing startup bootstrap.
+        # Editable installs resolve the pin through `_sdk_requirement_for_cli`.
+        requirement_patch = (
+            patch(
+                "deepagents_code.extras_info._sdk_requirement_for_cli",
+                return_value=None,
+            )
+            if argv[1:] == ["doctor", "--json"]
+            else nullcontext()
         )
-        config_module = sys.modules.get("deepagents_code.config")
-        bootstrap_done = (
-            getattr(config_module, "_bootstrap_done", None)
-            if config_module is not None
-            else None
-        )
-        print("LOADED_MODULES=" + json.dumps(loaded), file=sys.stderr)
-        print("BOOTSTRAP_DONE=" + json.dumps(bootstrap_done), file=sys.stderr)
+        try:
+            with (
+                patch.object(sys, "argv", argv),
+                patch("deepagents_code.main.check_cli_dependencies"),
+                requirement_patch,
+            ):
+                cli_main()
+        finally:
+            prefixes = tuple(json.loads(sys.argv[2]))
+            loaded = sorted(
+                name for name in sys.modules if name.startswith(prefixes)
+            )
+            config_module = sys.modules.get("deepagents_code.config")
+            bootstrap_state = (
+                getattr(config_module, "_bootstrap_state", None)
+                if config_module is not None
+                else None
+            )
+            bootstrap_done = (
+                bootstrap_state.done if bootstrap_state is not None else None
+            )
+            print("LOADED_MODULES=" + json.dumps(loaded), file=sys.stderr)
+            print("BOOTSTRAP_DONE=" + json.dumps(bootstrap_done), file=sys.stderr)
     """
     return subprocess.run(
         [
@@ -92,10 +114,13 @@ def _read_marker(stderr: str, prefix: str) -> object:
     ("argv", "expected"),
     [
         (["help"], "Start interactive thread"),
-        (["agents"], "deepagents agents <command>"),
-        (["skills"], "deepagents skills <command>"),
-        (["threads"], "deepagents threads <command>"),
-        (["mcp"], "deepagents mcp <command>"),
+        (["agents"], "dcode agents <command>"),
+        (["skills"], "dcode skills <command>"),
+        (["threads"], "dcode threads <command>"),
+        (["mcp"], "dcode mcp <command>"),
+        (["config", "-h"], "dcode config [options]"),
+        (["auth"], "dcode auth <command>"),
+        (["tools"], "dcode tools <command>"),
     ],
 )
 def test_help_only_commands_skip_runtime_imports(
@@ -120,12 +145,58 @@ def test_help_only_commands_skip_runtime_imports(
 
 
 @pytest.mark.parametrize(
+    ("argv", "expected"),
+    [
+        (["auth", "path"], "/auth.json"),
+        (["config", "path", "--json"], '"command": "config path"'),
+        (["doctor", "--json"], '"command": "doctor"'),
+    ],
+)
+def test_lightweight_commands_skip_settings_bootstrap(
+    argv: list[str], expected: str
+) -> None:
+    """Lightweight diagnostics commands should avoid settings bootstrap."""
+    result = _run_cli_main(argv)
+
+    assert result.returncode == 0, result.stderr
+    assert expected in result.stdout
+
+    bootstrap_done = _read_marker(result.stderr, "BOOTSTRAP_DONE=")
+    assert bootstrap_done in (None, False), (
+        f"settings bootstrap must not run for {argv}; got {bootstrap_done!r}"
+    )
+
+
+def test_auth_credential_resolution_commands_run_settings_bootstrap() -> None:
+    """Auth commands that resolve credentials must see dotenv-loaded values."""
+    result = _run_cli_main(["auth", "status", "anthropic"])
+
+    assert result.returncode == 0, result.stderr
+    bootstrap_done = _read_marker(result.stderr, "BOOTSTRAP_DONE=")
+    assert bootstrap_done is True
+
+
+def test_bare_config_runs_primary_action() -> None:
+    """Bare `config` must resolve values instead of rendering command help."""
+    result = _run_cli_main(["config", "--json"])
+
+    assert result.returncode == 0, result.stderr
+    assert '"command": "config"' in result.stdout
+    bootstrap_done = _read_marker(result.stderr, "BOOTSTRAP_DONE=")
+    assert bootstrap_done is True
+
+
+@pytest.mark.parametrize(
     "argv",
     [
         ["agents", "list"],
         ["skills", "list"],
         ["threads", "list"],
         ["mcp", "login", "example.com"],
+        ["config", "get", "interpreter.memory_limit_mb"],
+        ["auth", "list"],
+        ["tools", "install"],
+        ["tools", "list"],
     ],
 )
 def test_subcommands_bypass_fast_path(argv: list[str]) -> None:
@@ -145,21 +216,21 @@ def test_unknown_command_bypasses_fast_path() -> None:
     assert _show_bare_command_group_help(args) is False
 
 
-def test_help_specs_covers_every_subparser_group() -> None:
-    """Drift guard: every top-level group with sub-subparsers is in `_HELP_SPECS`.
-
-    If a future PR adds a new command group with `add_subparsers(...)` but
-    forgets to register it here, the fast path silently regresses for that
-    group. This mirrors `test_args.TestHelpScreenDrift`.
-    """
+def test_command_group_specs_cover_every_subparser_group() -> None:
+    """Every command group must declare what its bare invocation does."""
     parser = _build_top_level_parser()
     groups_with_subparsers = _top_level_subparser_groups(parser)
-    missing = groups_with_subparsers - set(_HELP_SPECS)
+    overlap = set(_HELP_SPECS) & _BARE_ACTION_GROUPS
+    assert not overlap, (
+        f"Command groups declare conflicting defaults: {sorted(overlap)}"
+    )
+
+    known_groups = set(_HELP_SPECS) | _BARE_ACTION_GROUPS
+    missing = groups_with_subparsers - known_groups
     assert not missing, (
-        f"Top-level command groups have sub-subparsers but are missing from "
-        f"`_HELP_SPECS` in main.py: {sorted(missing)}.\n"
-        f"Add an entry mapping each group to its `<group>_command` dest and "
-        f"`show_<group>_help` UI function."
+        "Top-level command groups have subparsers but no declared bare behavior: "
+        f"{sorted(missing)}. Add each group to `_HELP_SPECS` or "
+        "`_BARE_ACTION_GROUPS` in main.py."
     )
 
 

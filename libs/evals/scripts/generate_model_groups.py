@@ -25,13 +25,13 @@ _HEADER = """\
 
 Quick reference for the model sets available in the
 [evals workflow](../../.github/workflows/evals.yml).
-Source of truth: [`.github/scripts/models.py`](../../.github/scripts/models.py).
+Source of truth: [`.github/scripts/evals/models.py`](../../.github/scripts/evals/models.py).
 """
 
 
 def _import_models() -> types.ModuleType:
-    """Import `.github/scripts/models.py` by file path (it has no package structure)."""
-    models_path = _REPO_ROOT / ".github" / "scripts" / "models.py"
+    """Import `.github/scripts/evals/models.py` by file path (it has no package structure)."""
+    models_path = _REPO_ROOT / ".github" / "scripts" / "evals" / "models.py"
     spec = importlib.util.spec_from_file_location("models", models_path)
     if spec is None or spec.loader is None:
         msg = f"Could not create import spec for {models_path}."
@@ -44,11 +44,11 @@ def _import_models() -> types.ModuleType:
 def _provider_heading(preset_name: str, registry: tuple) -> str:
     """Render the provider-section heading, prefixing the human label when distinct.
 
-    Returns ``Anthropic (anthropic)`` when at least one registered model has a
+    Returns `Anthropic (anthropic)` when at least one registered model has a
     `provider_label` that differs case-insensitively from the preset name (the
-    raw provider prefix), and ``anthropic`` otherwise. The check looks at the
+    raw provider prefix), and `anthropic` otherwise. The check looks at the
     registry rather than a fixed mapping so a future provider whose label
-    happens to lowercase to its prefix (e.g. ``Ollama`` → ``ollama``) keeps
+    happens to lowercase to its prefix (e.g. `Ollama` → `ollama`) keeps
     the compact form automatically.
     """
     tag = f"eval:{preset_name}"

@@ -92,7 +92,7 @@ jobs:
 
     steps:
       - name: "📋 Checkout Code"
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: "🐍 Set up Python ${{ matrix.python-version }} + UV"
         uses: "./.github/actions/uv_setup"
@@ -105,20 +105,21 @@ jobs:
         working-directory: ${{ matrix.working-directory }}
         run: uv sync --group test
 
-      - name: "📦 Install Sandbox Extras (CLI only)"
-        if: matrix.working-directory == 'libs/cli'
+      - name: "📦 Install Sandbox Extras (Code only)"
+        if: matrix.working-directory == 'libs/code'
         working-directory: ${{ matrix.working-directory }}
         run: uv sync --group test --extra all-sandboxes
 
       - name: "🚀 Run Integration Tests"
         working-directory: ${{ matrix.working-directory }}
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }} # sandboxes
-          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
-          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RUNLOOP_API_KEY: ${{ secrets.RUNLOOP_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ (matrix.working-directory == 'libs/deepagents' || matrix.working-directory == 'libs/partners/quickjs') && secrets.ANTHROPIC_API_KEY || '' }}
+          DAYTONA_API_KEY: ${{ (matrix.working-directory == 'libs/partners/daytona' || matrix.working-directory == 'libs/code') && secrets.DAYTONA_API_KEY || '' }}
+          LANGSMITH_API_KEY: ${{ (matrix.working-directory == 'libs/deepagents' || matrix.working-directory == 'libs/code') && secrets.LANGSMITH_API_KEY || '' }}
+          MODAL_TOKEN_ID: ${{ (matrix.working-directory == 'libs/partners/modal' || matrix.working-directory == 'libs/code') && secrets.MODAL_TOKEN_ID || '' }}
+          MODAL_TOKEN_SECRET: ${{ (matrix.working-directory == 'libs/partners/modal' || matrix.working-directory == 'libs/code') && secrets.MODAL_TOKEN_SECRET || '' }}
+          OPENAI_API_KEY: ${{ matrix.working-directory == 'libs/deepagents' && secrets.OPENAI_API_KEY || '' }}
+          RUNLOOP_API_KEY: ${{ (matrix.working-directory == 'libs/partners/runloop' || matrix.working-directory == 'libs/code') && secrets.RUNLOOP_API_KEY || '' }}
         run: make integration_tests
 
       - name: "🧹 Verify Clean Working Directory"

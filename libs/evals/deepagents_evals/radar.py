@@ -7,18 +7,19 @@ encodes the score (0-1 correctness).
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import json
 import math
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 try:
-    import matplotlib.pyplot as plt
+    plt: Any = importlib.import_module("matplotlib.pyplot")
 except ImportError:
-    plt = None  # type: ignore[assignment]
+    plt = None
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -45,7 +46,7 @@ EVAL_CATEGORIES: list[str] = _categories_raw.get("radar_categories", _categories
 """Radar-eligible eval category names.
 
 Order determines axis placement on the radar chart (clockwise from top).
-Categories like ``unit_test`` that verify SDK plumbing rather than model
+Categories like `unit_test` that verify SDK plumbing rather than model
 capability are excluded from this list.
 """
 
@@ -398,18 +399,20 @@ def _safe_filename(model: str) -> str:
     return safe.strip("-") or "unknown"
 
 
-_MODELS_REGISTRY_PATH = Path(__file__).resolve().parents[3] / ".github" / "scripts" / "models.py"
+_MODELS_REGISTRY_PATH = (
+    Path(__file__).resolve().parents[3] / ".github" / "scripts" / "evals" / "models.py"
+)
 """Path to the canonical eval model registry.
 
 Resolves at module import time. Inside the monorepo this points at
-`.github/scripts/models.py`; for installed-package consumers the path will
+`.github/scripts/evals/models.py`; for installed-package consumers the path will
 not exist and label lookups fall back gracefully (see `_registry_labels`).
 """
 
 
 @lru_cache(maxsize=1)
 def _registry_labels() -> dict[str, str]:
-    """Return a `spec → display_name` map from `.github/scripts/models.py`.
+    """Return a `spec → display_name` map from `.github/scripts/evals/models.py`.
 
     Empty dict when the registry file isn't reachable (e.g. installed-package
     use outside the repo). Cached so repeated chart generations don't reload.
@@ -432,7 +435,7 @@ def _registry_labels() -> dict[str, str]:
 def _short_model_name(model: str) -> str:
     """Shorten `provider:model-name-version` to a readable label.
 
-    Prefers the curated `display_name` from `.github/scripts/models.py` when
+    Prefers the curated `display_name` from `.github/scripts/evals/models.py` when
     the spec is registered. Falls back to stripping the `provider:` prefix
     and truncating to 30 characters — used for ad-hoc specs and for
     installed-package consumers that can't reach the repo's registry.
