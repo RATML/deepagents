@@ -2,6 +2,58 @@
 
 # Deep Agents Changelog
 
+## [0.8.0](https://github.com/RATML/deepagents/compare/deepagents==0.7.1...deepagents==0.8.0) (2026-07-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sdk,code,quickjs:** make the `ToDoListMiddleware` list opt-in ([#4929](https://github.com/RATML/deepagents/issues/4929))
+* **sdk:** remove deprecated backend compatibility shims ([#4541](https://github.com/RATML/deepagents/issues/4541))
+* **sdk:** disambiguate `read_file` line gutters ([#4561](https://github.com/RATML/deepagents/issues/4561))
+
+* **sdk:** remove deprecated backend compatibility shims ([#4541](https://github.com/RATML/deepagents/issues/4541)) ([540a0fa](https://github.com/RATML/deepagents/commit/540a0fa7eb9a88d82413cf10a5cb5c807d491385))
+
+
+### Features
+
+* **sdk,code,quickjs:** lean system prompt by default, restorable ([#4859](https://github.com/RATML/deepagents/issues/4859)) ([a8d1b32](https://github.com/RATML/deepagents/commit/a8d1b32aa4136d0498ba7b48367c8001ac462bd0))
+* **sdk,code,quickjs:** make the `ToDoListMiddleware` list opt-in ([#4929](https://github.com/RATML/deepagents/issues/4929)) ([9340518](https://github.com/RATML/deepagents/commit/9340518a26c4287f9ad0c543edc9b69106c15154))
+* **sdk:** add NVIDIA Nemotron 3 Ultra harness profile ([#4192](https://github.com/RATML/deepagents/issues/4192)) ([d5a60ec](https://github.com/RATML/deepagents/commit/d5a60ece7379c37c81edcef2cd6c2811ddc90c9a))
+* **sdk:** add total match cap and streaming to grep ([#4570](https://github.com/RATML/deepagents/issues/4570)) ([8e86f5e](https://github.com/RATML/deepagents/commit/8e86f5ecc8908762a2c748880287f190dde70600))
+* **sdk:** mark editable installs in `lc_versions.deepagents` ([#5158](https://github.com/RATML/deepagents/issues/5158)) ([ee7ac3d](https://github.com/RATML/deepagents/commit/ee7ac3d47980e4037403bfea1a13b7b51e06fb4a))
+* **sdk:** report remaining lines for paginated reads ([#4540](https://github.com/RATML/deepagents/issues/4540)) ([8321194](https://github.com/RATML/deepagents/commit/83211940a2cdf4c52ac21a6cde8647716a998504))
+* **sdk:** support surrounding lines in filesystem grep results ([#4706](https://github.com/RATML/deepagents/issues/4706)) ([65230df](https://github.com/RATML/deepagents/commit/65230df6f91d2bbe5f83d4d938da6bfac52363a1))
+* **sdk:** trim built-in tool descriptions ([#5009](https://github.com/RATML/deepagents/issues/5009)) ([761f5f0](https://github.com/RATML/deepagents/commit/761f5f0882dee186f2700f3c903829a5542626fe))
+* **sdk:** use `FireworksPromptCachingMiddleware` for session affinity ([#4598](https://github.com/RATML/deepagents/issues/4598)) ([5d878bf](https://github.com/RATML/deepagents/commit/5d878bf1341afc3f96398733b7ef18eec4b66139))
+
+
+### Bug Fixes
+
+* **langsmith-sandbox:** sandbox glob path boundary checks ([#4588](https://github.com/RATML/deepagents/issues/4588)) ([c6c7213](https://github.com/RATML/deepagents/commit/c6c72139b3ee7d090f657dd19ced59a9bbc41140))
+* **sdk:** accept list format for skill `allowed-tools` ([#4140](https://github.com/RATML/deepagents/issues/4140)) ([d62534c](https://github.com/RATML/deepagents/commit/d62534c86b87a91aca16c6bfb71209232d69a6ec))
+* **sdk:** condition `execute` search guidance on visible tools ([#4921](https://github.com/RATML/deepagents/issues/4921)) ([b65cc00](https://github.com/RATML/deepagents/commit/b65cc0076caab2e35c07598055b8b338a47e5e1a))
+* **sdk:** condition large-result guidance on visible tools ([#4920](https://github.com/RATML/deepagents/issues/4920)) ([d3650c7](https://github.com/RATML/deepagents/commit/d3650c7b1f5ca968abd72345a511719d4ba65907))
+* **sdk:** diagnose rubric grader structured output errors ([#4938](https://github.com/RATML/deepagents/issues/4938)) ([f51d3a0](https://github.com/RATML/deepagents/commit/f51d3a0145a0301317c36b0ae15263007dacd6f1))
+* **sdk:** disambiguate `read_file` line gutters ([#4561](https://github.com/RATML/deepagents/issues/4561)) ([cf057b4](https://github.com/RATML/deepagents/commit/cf057b4bcdb77ad67014f7dabe71e71f2366c95e))
+* **sdk:** empty read for degenerate `read_file` windows ([#5184](https://github.com/RATML/deepagents/issues/5184)) ([6bf3b68](https://github.com/RATML/deepagents/commit/6bf3b68441e04e9e25883a4f91e6b8d0d6c15703))
+* **sdk:** include HTTP status in rubric grader errors ([#4967](https://github.com/RATML/deepagents/issues/4967)) ([bca70aa](https://github.com/RATML/deepagents/commit/bca70aa1f30ee1472809894e2474a76e4ff2f8bd))
+* **sdk:** isolate composite glob paths ([#4531](https://github.com/RATML/deepagents/issues/4531)) ([cbdb0a7](https://github.com/RATML/deepagents/commit/cbdb0a7df8cd4bbacff9ca7ac2e42232ef290c10))
+* **sdk:** isolate private custom state from subagents ([#4587](https://github.com/RATML/deepagents/issues/4587)) ([a4662c0](https://github.com/RATML/deepagents/commit/a4662c07296c378045006c9f45ed1d12bd1a9da6))
+* **sdk:** preserve `ContextT` on `create_deep_agent` `middleware` ([#4055](https://github.com/RATML/deepagents/issues/4055)) ([7be76c7](https://github.com/RATML/deepagents/commit/7be76c752117e6e61dcdc931ea5147261fad6768))
+* **sdk:** propagate root listing errors from `CompositeBackend` ([#4925](https://github.com/RATML/deepagents/issues/4925)) ([4c3b166](https://github.com/RATML/deepagents/commit/4c3b1667035e3be6ae88cf8c431e0d6f143d2ff4))
+* **sdk:** remove excluded tools from `ToolNode` ([#4698](https://github.com/RATML/deepagents/issues/4698)) ([9709525](https://github.com/RATML/deepagents/commit/970952550e8f53cd89a64a4ee98969ce757693ff))
+* **sdk:** warn instead of silently skipping unresolved state schemas ([#5166](https://github.com/RATML/deepagents/issues/5166)) ([2054c07](https://github.com/RATML/deepagents/commit/2054c078071b4248707c2b28c7e5254e36703e66))
+
+
+### Performance Improvements
+
+* **langsmith-sandbox:** run LangSmith sandbox commands over the async client ([#5061](https://github.com/RATML/deepagents/issues/5061)) ([0d08747](https://github.com/RATML/deepagents/commit/0d0874710615df2c89c3c30e56bfdabb73b44d99))
+
+
+### Reverted Changes
+
+* **code,sdk:** revert `SystemPromptConfig` ([#4969](https://github.com/RATML/deepagents/issues/4969)) ([d046427](https://github.com/RATML/deepagents/commit/d046427b536c8ddbce5d804d6ae8b860511a9b44))
+
 ## [0.7.1](https://github.com/langchain-ai/deepagents/compare/deepagents==0.7.0...deepagents==0.7.1) (2026-07-30)
 
 ### Features
