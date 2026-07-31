@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.4](https://github.com/RATML/deepagents/compare/deepagents-talon==0.0.3...deepagents-talon==0.0.4) (2026-07-31)
+
+
+### Features
+
+* **talon:** add Fleet zip import command ([#4493](https://github.com/RATML/deepagents/issues/4493)) ([0289dd0](https://github.com/RATML/deepagents/commit/0289dd0a190e5060e631e840da115dd59c64cf5c))
+
 ## [0.0.3](https://github.com/langchain-ai/deepagents/compare/deepagents-talon==0.0.2...deepagents-talon==0.0.3) (2026-07-06)
 
 
